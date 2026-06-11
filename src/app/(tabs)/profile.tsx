@@ -54,11 +54,17 @@ export default function ProfileScreen() {
       Alert.alert('Permission Denied', 'Push notification permission was not granted.');
       return;
     }
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    const result = await registerFcmToken(uid, token);
-    if (result.success) {
-      setNotifRegistered(true);
-      Alert.alert('Notifications Enabled!', 'You will now receive booking updates and alerts.');
+    try {
+      // Get native FCM device token (works without Expo account)
+      const tokenData = await Notifications.getDevicePushTokenAsync();
+      const fcmToken = tokenData.data as string;
+      const result = await registerFcmToken(uid, fcmToken);
+      if (result.success) {
+        setNotifRegistered(true);
+        Alert.alert('Notifications Enabled!', 'You will now receive booking updates and alerts.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to get push token. Try again.');
     }
   };
 
