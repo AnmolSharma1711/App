@@ -4,9 +4,9 @@ import {
 } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { RazorpayWebView } from '@/components/ui/RazorpayWebView';
 import { getServices, createOrder, verifyPayment } from '@/lib/api';
 import { getCurrentUid } from '@/lib/authHelper';
-import RazorpayCheckout from 'react-native-razorpay';
 
 interface Service {
   id: string;
@@ -16,6 +16,12 @@ interface Service {
   description: string;
 }
 
+interface PaymentSession {
+  orderId: string;
+  amount: number;
+  service: Service;
+}
+
 export default function DashboardScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +29,7 @@ export default function DashboardScreen() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(1);
   const [isBooking, setIsBooking] = useState(false);
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
 
   const fetchServices = async () => {
     try {
@@ -58,41 +65,34 @@ export default function DashboardScreen() {
         Alert.alert('Error', data.error || 'Could not create order');
         return;
       }
-
-      const options = {
-        description: `Payment for ${service.name}`,
-        currency: 'INR',
-        key: 'rzp_test_T0Dif47kIO69P8',
-        amount: data.order.amount,
-        name: 'Gokul Healthcare - JanSahayak',
-        order_id: data.order.id,
-        prefill: { contact: uid.replace('91', '+91') },
-        theme: { color: '#0F766E' },
-      };
-
-      RazorpayCheckout.open(options as any)
-        .then(async (paymentData: any) => {
-          // Verify payment signature on backend
-          const verifyData = await verifyPayment(
-            paymentData.razorpay_order_id,
-            paymentData.razorpay_payment_id,
-            paymentData.razorpay_signature,
-            uid
-          );
-          if (verifyData.success) {
-            Alert.alert('Booking Confirmed!', 'Your service has been booked successfully. Our team will contact you shortly.');
-            setSelectedServiceId(null);
-          } else {
-            Alert.alert('Verification Failed', 'Payment done but verification failed. Contact support.');
-          }
-        })
-        .catch(() => {
-          Alert.alert('Payment Cancelled', 'You cancelled the payment.');
-        });
+      setPaymentSession({ orderId: data.order.id, amount: data.order.amount, service });
     } catch {
       Alert.alert('Error', 'Network error. Make sure backend is running.');
     } finally {
       setIsBooking(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData: any) => {
+    setPaymentSession(null);
+    const uid = getCurrentUid();
+    if (!uid) return;
+
+    try {
+      const result = await verifyPayment(
+        paymentData.razorpay_order_id,
+        paymentData.razorpay_payment_id,
+        paymentData.razorpay_signature,
+        uid
+      );
+      if (result.success) {
+        Alert.alert('✅ Booking Confirmed!', 'Your service has been booked. Our team will contact you shortly.');
+        setSelectedServiceId(null);
+      } else {
+        Alert.alert('Verification Failed', 'Contact support with your payment ID: ' + paymentData.razorpay_payment_id);
+      }
+    } catch {
+      Alert.alert('Error', 'Payment done but verification failed. Contact support.');
     }
   };
 
@@ -105,60 +105,82 @@ export default function DashboardScreen() {
     );
   }
 
+  const uid = getCurrentUid();
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchServices(); }} tintColor="#0F766E" />}
-    >
-      <Text style={styles.header}>Available Services</Text>
-      <Text style={styles.subHeader}>Tap a service to select and book</Text>
+    <>
+      {paymentSession && (
+        <RazorpayWebView
+          orderId={paymentSession.orderId}
+          amount={paymentSession.amount}
+          keyId="rzp_test_T0Dif47kIO69P8"
+          serviceName={paymentSession.service.name}
+          phone={uid ? '+' + uid : ''}
+          onSuccess={handlePaymentSuccess}
+          onDismiss={() => setPaymentSession(null)}
+        />
+      )}
 
-      {services.map(service => (
-        <Card key={service.id} style={[styles.card, selectedServiceId === service.id && styles.cardSelected]}>
-          <View style={styles.serviceInfo}>
-            <Text style={styles.serviceName}>{service.name}</Text>
-            <Text style={styles.serviceDescription}>{service.description}</Text>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); fetchServices(); }}
+            tintColor="#0F766E"
+          />
+        }
+      >
+        <Text style={styles.header}>Available Services</Text>
+        <Text style={styles.subHeader}>Tap a service to select and book</Text>
 
-            {service.type === 'per_hour' && selectedServiceId === service.id ? (
-              <View style={styles.durationRow}>
-                <Text style={styles.durationLabel}>Duration: </Text>
-                <View style={styles.durationControl}>
-                  <Button title="−" onPress={() => setSelectedDuration(Math.max(1, selectedDuration - 1))} size="small" variant="outline" />
-                  <Text style={styles.durationText}>{selectedDuration} hr</Text>
-                  <Button title="+" onPress={() => setSelectedDuration(selectedDuration + 1)} size="small" variant="outline" />
+        {services.map(service => (
+          <Card key={service.id} style={[styles.card, selectedServiceId === service.id && styles.cardSelected]}>
+            <View style={styles.serviceInfo}>
+              <Text style={styles.serviceName}>{service.name}</Text>
+              <Text style={styles.serviceDescription}>{service.description}</Text>
+
+              {service.type === 'per_hour' && selectedServiceId === service.id ? (
+                <View style={styles.durationRow}>
+                  <Text style={styles.durationLabel}>Duration:</Text>
+                  <View style={styles.durationControl}>
+                    <Button title="−" onPress={() => setSelectedDuration(Math.max(1, selectedDuration - 1))} size="small" variant="outline" />
+                    <Text style={styles.durationText}>{selectedDuration} hr</Text>
+                    <Button title="+" onPress={() => setSelectedDuration(selectedDuration + 1)} size="small" variant="outline" />
+                  </View>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
 
-            <Text style={styles.priceType}>
-              {service.type === 'per_hour' ? '₹' + service.basePrice + '/hr' : service.type === 'per_session' ? '₹' + service.basePrice + '/session' : '₹' + service.basePrice}
-            </Text>
-          </View>
+              <Text style={styles.priceType}>
+                {service.type === 'per_hour' ? `₹${service.basePrice}/hr` : service.type === 'per_session' ? `₹${service.basePrice}/session` : `₹${service.basePrice}`}
+              </Text>
+            </View>
 
-          <View style={styles.actionColumn}>
-            <Text style={styles.totalPrice}>
-              ₹{selectedServiceId === service.id ? calculatePrice(service) : service.basePrice}
-            </Text>
-            {selectedServiceId === service.id ? (
-              <>
-                <Button title="Pay & Lock" size="small" onPress={() => handleBook(service)} isLoading={isBooking} />
-                <View style={{ marginTop: 6 }}>
-                  <Button title="Cancel" size="small" variant="outline" onPress={() => setSelectedServiceId(null)} />
-                </View>
-              </>
-            ) : (
-              <Button
-                title="Select"
-                size="small"
-                variant="outline"
-                onPress={() => { setSelectedServiceId(service.id); setSelectedDuration(1); }}
-              />
-            )}
-          </View>
-        </Card>
-      ))}
-    </ScrollView>
+            <View style={styles.actionColumn}>
+              <Text style={styles.totalPrice}>
+                ₹{selectedServiceId === service.id ? calculatePrice(service) : service.basePrice}
+              </Text>
+              {selectedServiceId === service.id ? (
+                <>
+                  <Button title="Pay & Lock 🔒" size="small" onPress={() => handleBook(service)} isLoading={isBooking} />
+                  <View style={{ marginTop: 6 }}>
+                    <Button title="Cancel" size="small" variant="outline" onPress={() => setSelectedServiceId(null)} />
+                  </View>
+                </>
+              ) : (
+                <Button
+                  title="Select"
+                  size="small"
+                  variant="outline"
+                  onPress={() => { setSelectedServiceId(service.id); setSelectedDuration(1); }}
+                />
+              )}
+            </View>
+          </Card>
+        ))}
+      </ScrollView>
+    </>
   );
 }
 
@@ -175,7 +197,7 @@ const styles = StyleSheet.create({
   serviceName: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
   serviceDescription: { fontSize: 13, color: '#64748B', marginBottom: 8 },
   priceType: { fontSize: 13, color: '#0F766E', fontWeight: '600' },
-  durationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  durationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   durationLabel: { fontSize: 13, color: '#334155', fontWeight: '500' },
   durationControl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   durationText: { fontSize: 15, fontWeight: '700', color: '#0F172A', minWidth: 40, textAlign: 'center' },
