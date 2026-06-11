@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "888690963801",
+    "project_id": "jansahayak-e68df",
+    "storage_bucket": "jansahayak-e68df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888690963801:android:995fcee8fbe9e3f09f4848",
+        "android_client_info": {
+          "package_name": "com.iiitd.ac.in"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPAFu_pOCR7YLgzqH39THpsL_M0BdBzn0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
