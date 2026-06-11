@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate JS bundle with Expo export (catches TS/Metro errors)
+        run: npx expo export --platform android --output-dir /tmp/expo-bundle
+
       - name: Expo Prebuild (Android)
         run: npx expo prebuild --platform android --clean
 
