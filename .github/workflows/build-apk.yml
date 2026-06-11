@@ -65,8 +65,11 @@ jobs:
       - name: Show key errors from build log
         if: failure()
         run: |
-          echo "====== TASK FAILURES ======"
-          grep -n "FAILED\|What went wrong\|Caused by\|> Task\|error:" /tmp/gradle.log | head -80
+          echo "====== WHAT WENT WRONG ======"
+          grep -A 30 "What went wrong" /tmp/gradle.log | head -60
+          echo ""
+          echo "====== CAUSED BY ======"
+          grep -A 5 "Caused by" /tmp/gradle.log | head -40
 
       - name: Upload full Gradle log
         if: failure()
