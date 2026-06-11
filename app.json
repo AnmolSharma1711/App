@@ -7,9 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "jansahayak",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "package": "com.iiitd.ac.in",
       "googleServicesFile": "./google-services.json",
@@ -19,37 +16,17 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#0F766E",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#0F766E",
-          "androidMode": "default"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     }
   }
 }
