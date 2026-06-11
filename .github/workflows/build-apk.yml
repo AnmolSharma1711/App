@@ -32,6 +32,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Test Expo autolinking (catch autolinking errors before Gradle)
+        run: |
+          echo "=== Expo autolinking modules ==="
+          node node_modules/expo-modules-autolinking/build/index.js resolve \
+            --platform android \
+            --json 2>&1 || echo "AUTOLINKING FAILED ABOVE"
+
       - name: Validate JS bundle with Expo export
         run: npx expo export --platform android --output-dir /tmp/expo-bundle
 
