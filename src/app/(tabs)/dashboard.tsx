@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { API_URL } from '@/constants/api';
+import RazorpayCheckout from 'react-native-razorpay';
 
 export default function DashboardScreen() {
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
@@ -25,22 +27,34 @@ export default function DashboardScreen() {
     setIsBooking(true);
     const amount = calculatePrice(service);
     try {
-      const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
       const res = await fetch(`${API_URL}/api/payments/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount })
       });
       const data = await res.json();
-      if (data.success) {
-        // Here we would launch Razorpay Checkout using react-native-razorpay
-        // Since we are building the UI, we'll simulate the payment completion
-        Alert.alert('Booking Locked', `Order created for ₹${amount}. Proceeding to payment...`);
+      if (data.success && data.order) {
+        const options = {
+          description: `Payment for ${service.name}`,
+          image: 'https://reactnative.dev/img/tiny_logo.png',
+          currency: 'INR',
+          key: 'rzp_test_T0Dif47kIO69P8',
+          amount: data.order.amount,
+          name: 'Gokul Healthcare',
+          order_id: data.order.id,
+          theme: { color: '#0F766E' }
+        };
+
+        RazorpayCheckout.open(options).then((paymentData: any) => {
+          Alert.alert('Payment Successful', `Payment ID: ${paymentData.razorpay_payment_id}`);
+        }).catch((error: any) => {
+          Alert.alert('Payment Cancelled', 'You cancelled the payment.');
+        });
       } else {
         Alert.alert('Error', 'Could not create order');
       }
     } catch (e) {
-      Alert.alert('Error', 'Payment backend not reachable');
+      Alert.alert('Error', 'Payment backend not reachable at ' + API_URL);
     } finally {
       setIsBooking(false);
     }

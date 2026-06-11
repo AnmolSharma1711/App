@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { API_URL } from '@/constants/api';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export default function CustomerLoginScreen() {
   const [loginMethod, setLoginMethod] = useState<'otp' | 'password'>('otp');
@@ -16,7 +19,6 @@ export default function CustomerLoginScreen() {
   const handleSendOtp = async () => {
     setIsLoading(true);
     try {
-      const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
       const res = await fetch(`${API_URL}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,7 +31,7 @@ export default function CustomerLoginScreen() {
         alert(data.error || 'Failed to send OTP');
       }
     } catch (error) {
-      alert('Network error. Check if backend is running.');
+      alert('Network error. Check if backend is running at ' + API_URL);
     } finally {
       setIsLoading(false);
     }
@@ -38,20 +40,20 @@ export default function CustomerLoginScreen() {
   const handleVerifyOtp = async () => {
     setIsLoading(true);
     try {
-      const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
       const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp })
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.token) {
+        await signInWithCustomToken(auth, data.token);
         router.replace('/(tabs)/dashboard');
       } else {
         alert(data.error || 'Invalid OTP');
       }
     } catch (error) {
-      alert('Network error.');
+      alert('Network error or Firebase Auth failed.');
     } finally {
       setIsLoading(false);
     }
