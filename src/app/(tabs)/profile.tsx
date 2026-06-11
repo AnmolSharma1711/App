@@ -8,21 +8,14 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { getBookings, registerFcmToken } from '@/lib/api';
+import { getBookings } from '@/lib/api';
 import { getCurrentUid } from '@/lib/authHelper';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState<any>(null);
   const [bookingCount, setBookingCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [notifRegistered, setNotifRegistered] = useState(false);
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    setUser(currentUser);
-
     const uid = getCurrentUid();
     if (uid) {
       getBookings(uid)
@@ -33,40 +26,6 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   }, []);
-
-  const registerForPushNotifications = async () => {
-    const uid = getCurrentUid();
-    if (!uid) {
-      Alert.alert('Not Logged In', 'Please log in first.');
-      return;
-    }
-    if (!Device.isDevice) {
-      Alert.alert('Physical Device Required', 'Push Notifications work only on physical Android devices.');
-      return;
-    }
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') {
-      Alert.alert('Permission Denied', 'Push notification permission was not granted.');
-      return;
-    }
-    try {
-      // Get native FCM device token (works without Expo account)
-      const tokenData = await Notifications.getDevicePushTokenAsync();
-      const fcmToken = tokenData.data as string;
-      const result = await registerFcmToken(uid, fcmToken);
-      if (result.success) {
-        setNotifRegistered(true);
-        Alert.alert('Notifications Enabled!', 'You will now receive booking updates and alerts.');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to get push token. Try again.');
-    }
-  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -90,7 +49,7 @@ export default function ProfileScreen() {
         {/* Avatar */}
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{displayPhone.charAt(1).toUpperCase() ?? 'U'}</Text>
+            <Text style={styles.avatarText}>{displayPhone.charAt(1)?.toUpperCase() ?? 'U'}</Text>
           </View>
           <Text style={styles.phoneText}>{displayPhone}</Text>
           <Text style={styles.roleText}>Customer · Gokul Healthcare</Text>
@@ -111,20 +70,12 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        {/* Notifications */}
-        <Card>
-          <Text style={styles.sectionTitle}>Push Notifications</Text>
-          <Text style={styles.sectionSubtitle}>
-            Enable to get booking confirmations & service updates.
+        {/* Info */}
+        <Card style={styles.infoCard}>
+          <Text style={styles.infoTitle}>🔔 Push Notifications</Text>
+          <Text style={styles.infoText}>
+            You will automatically receive booking confirmations and service updates from Gokul Healthcare via SMS and in-app alerts.
           </Text>
-          <View style={{ marginTop: 12 }}>
-            <Button
-              title={notifRegistered ? '✓ Notifications Enabled' : 'Enable Notifications'}
-              onPress={registerForPushNotifications}
-              variant={notifRegistered ? 'secondary' : 'primary'}
-              disabled={notifRegistered}
-            />
-          </View>
         </Card>
 
         {/* Logout */}
@@ -154,7 +105,8 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 28, fontWeight: '800', color: '#0F766E' },
   statLabel: { fontSize: 12, color: '#64748B', marginTop: 4, textAlign: 'center' },
   statDivider: { width: 1, height: 48, backgroundColor: '#E2E8F0' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
-  sectionSubtitle: { fontSize: 13, color: '#64748B' },
-  logoutContainer: { marginTop: 24 },
+  infoCard: { marginBottom: 16, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 },
+  infoTitle: { fontSize: 15, fontWeight: '700', color: '#166534', marginBottom: 6 },
+  infoText: { fontSize: 13, color: '#166534', lineHeight: 20 },
+  logoutContainer: { marginTop: 8 },
 });
