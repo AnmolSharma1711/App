@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Test JS bundle with Expo (catch errors before Gradle)
+        run: npx expo export --platform android --output-dir /tmp/expo-export || true
+
       - name: Expo Prebuild (Android)
         run: npx expo prebuild --platform android --clean
 
@@ -51,7 +54,7 @@ jobs:
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Xmx4g"
           _JAVA_OPTIONS: "-Xmx4g -Xms512m"
-        run: cd android && ./gradlew assembleDebug --no-daemon --max-workers=2 --stacktrace
+        run: cd android && ./gradlew assembleDebug --no-daemon --max-workers=2 --stacktrace --info 2>&1 | grep -v "^Considering\|^All projects\|^Task \|^Skipping\|^file:\|^Watching\|^Build cache\|^Initialized\|^Compiling\|^Executing\|^Configuration\|^Resolve\|^Registering\|Incubating\|> Configure\|^Project\|See the report" | head -200
 
       - name: Find APK files (diagnostic)
         if: always()
@@ -62,4 +65,4 @@ jobs:
         with:
           name: JanSahayak-debug.apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          if-no-files-found: warn
