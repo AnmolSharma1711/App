@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate JS bundle with Expo export (catches TS/Metro errors)
+      - name: Validate JS bundle with Expo export
         run: npx expo export --platform android --output-dir /tmp/expo-bundle
 
       - name: Expo Prebuild (Android)
@@ -53,13 +53,29 @@ jobs:
       - name: Grant gradlew execute permission
         run: chmod +x android/gradlew
 
-      - name: Build Debug APK
+      - name: Build Debug APK (capture full log)
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Xmx4g"
           _JAVA_OPTIONS: "-Xmx4g -Xms512m"
-        run: cd android && ./gradlew assembleDebug --no-daemon --max-workers=2 --stacktrace
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --max-workers=2 --stacktrace --warning-mode all 2>&1 | tee /tmp/gradle.log
+          exit ${PIPESTATUS[0]}
 
-      - name: Find APK files (diagnostic)
+      - name: Show key errors from build log
+        if: failure()
+        run: |
+          echo "====== TASK FAILURES ======"
+          grep -n "FAILED\|What went wrong\|Caused by\|> Task\|error:" /tmp/gradle.log | head -80
+
+      - name: Upload full Gradle log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log.txt
+          path: /tmp/gradle.log
+
+      - name: Find APK files
         if: always()
         run: find android -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
 
