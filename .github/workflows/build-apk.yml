@@ -55,6 +55,7 @@ jobs:
           org.gradle.workers.max=2
           newArchEnabled=false
           hermesEnabled=true
+          expo.inlineModules.watchedDirectories=[]
           EOF
 
       - name: Grant gradlew execute permission
